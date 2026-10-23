@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { LogOut, Menu, Pencil, SquarePen, Trash2, X } from 'lucide-react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import AirbnbLogo from '../components/AirbnbLogo'
+import LatticeLoader from '../components/LatticeLoader'
+// import PromptBar from '../components/PromptBar'
 import { useAuth } from '../context/AuthContext'
 import * as chatStore from '../lib/chatStore'
 
@@ -466,8 +468,14 @@ export default function Dashboard() {
                 </div>
               ))}
               {sending ? (
-                <div className="message assistant pending">
-                  <p>Thinking…</p>
+                <div className="message assistant pending thinking-loader">
+                  <LatticeLoader
+                    label="Thinking"
+                    status="working"
+                    pattern="orbit"
+                    color="var(--rausch)"
+                    showTimer
+                  />
                 </div>
               ) : null}
               <div ref={messagesEndRef} aria-hidden="true" />
@@ -475,6 +483,11 @@ export default function Dashboard() {
           )}
         </div>
 
+        {/* PromptBar temporarily disabled for client demo
+        <div className="composer">
+          <PromptBar ... />
+        </div>
+        */}
         <form className="composer" onSubmit={handleSend}>
           <input
             ref={inputRef}
