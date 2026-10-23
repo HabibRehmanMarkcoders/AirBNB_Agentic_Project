@@ -1,13 +1,17 @@
-import { HTTP_STATUS } from '../constants/httpStatus.js'
-import * as chatService from '../services/chatService.js'
-import { asyncHandler } from '../utils/asyncHandler.js'
+import { generateReply } from './chatService.js'
 
-export const sendMessage = asyncHandler(async (req, res) => {
-  const { message, history = [] } = req.body
-  const result = await chatService.generateReply(message, history)
+export const sendMessage = async (req, res) => {
+  try {
+    const { message, history = [] } = req.body
+    const result = await generateReply(message, history)
 
-  res.status(HTTP_STATUS.OK).json({
-    success: true,
-    data: result,
-  })
-})
+    res.status(200).json({
+      success: true,
+      data: result,
+    })
+  } catch (error) {
+    res.status(error.statusCode || 500).json({
+      message: error.message || 'Server error',
+    })
+  }
+}

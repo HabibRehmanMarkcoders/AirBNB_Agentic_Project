@@ -4,24 +4,29 @@ import AirbnbLogo from '../components/AirbnbLogo'
 import { useAuth } from '../context/AuthContext'
 
 export default function Login() {
-  const { user, login } = useAuth()
+  const { user, loading, login } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
-  if (user) {
+  if (!loading && user) {
     return <Navigate to="/dashboard" replace />
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    setSubmitting(true)
+
     try {
-      login({ email, password })
+      await login({ email, password })
       navigate('/dashboard')
     } catch (err) {
-      setError(err.message)
+      setError(err.message || 'Login failed')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -63,8 +68,8 @@ export default function Login() {
           />
         </label>
 
-        <button type="submit" className="auth-submit">
-          Log in
+        <button type="submit" className="auth-submit" disabled={submitting}>
+          {submitting ? 'Logging in…' : 'Log in'}
         </button>
 
         <p className="auth-switch">

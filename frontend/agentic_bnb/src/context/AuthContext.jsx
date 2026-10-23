@@ -1,78 +1,84 @@
-import { createContext, useContext, useMemo, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 
 const AuthContext = createContext(null)
-const USERS_KEY = 'agentic_bnb_users'
-const SESSION_KEY = 'agentic_bnb_session'
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
-function readUsers() {
-  try {
-    return JSON.parse(localStorage.getItem(USERS_KEY) || '[]')
-  } catch {
-    return []
-  }
-}
+async function authRequest(path, options = {}) {
+  const { headers, ...rest } = options
+  const res = await fetch(`${API_BASE}${path}`, {
+    credentials: 'include',
+    ...rest,
+    headers: { 'Content-Type': 'application/json', ...(headers || {}) },
+  })
 
-function readSession() {
-  try {
-    return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null')
-  } catch {
-    return null
+  const payload = await res.json().catch(() => ({}))
+
+  if (!res.ok || payload.success === false) {
+    throw new Error(payload.message || payload.error || 'Request failed')
   }
+
+  return payload
 }
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => readSession())
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
 
-  const signup = ({ name, username, email, password }) => {
-    const users = readUsers()
-    const normalized = email.trim().toLowerCase()
-    const displayName = (username || name || '').trim()
+  useEffect(() => {
+    let cancelled = false
 
-    if (!displayName) {
-      throw new Error('Name is required.')
+    authRequest('/auth/me')
+      .then((payload) => {
+        if (!cancelled) setUser(payload.data?.user || null)
+      })
+      .catch(() => {
+        if (!cancelled) setUser(null)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
     }
+  }, [])
 
-    if (users.some((u) => u.email === normalized)) {
-      throw new Error('An account with this email already exists.')
-    }
+  const signup = async ({ name, username, email, password }) => {
+    const payload = await authRequest('/auth/signup', {
+      method: 'POST',
+      body: JSON.stringify({
+        username: (username || name || '').trim(),
+        email,
+        password,
+      }),
+    })
 
-    const nextUser = {
-      id: crypto.randomUUID(),
-      name: displayName,
-      email: normalized,
-      password,
-    }
-
-    users.push(nextUser)
-    localStorage.setItem(USERS_KEY, JSON.stringify(users))
-
-    const session = { id: nextUser.id, name: nextUser.name, email: nextUser.email }
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session))
-    setUser(session)
-    return session
+    const nextUser = payload.data?.user || null
+    setUser(nextUser)
+    return nextUser
   }
 
-  const login = ({ email, password }) => {
-    const users = readUsers()
-    const normalized = email.trim().toLowerCase()
-    const found = users.find((u) => u.email === normalized && u.password === password)
+  const login = async ({ email, password }) => {
+    const payload = await authRequest('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    })
 
-    if (!found) {
-      throw new Error('Invalid email or password.')
-    }
-
-    const session = { id: found.id, name: found.name, email: found.email }
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session))
-    setUser(session)
-    return session
+    const nextUser = payload.data?.user || null
+    setUser(nextUser)
+    return nextUser
   }
 
-  const logout = () => {
-    localStorage.removeItem(SESSION_KEY)
+  const logout = async () => {
+    try {
+      await authRequest('/auth/logout', { method: 'POST' })
+    } catch {
+      // Clear local session even if the request fails.
+    }
     setUser(null)
   }
 
-  const value = useMemo(() => ({ user, login, signup, logout }), [user])
+  const value = useMemo(() => ({ user, loading, login, signup, logout }), [user, loading])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

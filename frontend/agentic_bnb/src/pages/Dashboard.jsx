@@ -20,7 +20,7 @@ function createChat(title = 'New chat') {
 export default function Dashboard() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
-  const userName = user?.name || 'Traveler'
+  const userName = user?.username || user?.name || ''
   const [chats, setChats] = useState([])
   const [activeId, setActiveId] = useState(null)
   const [draft, setDraft] = useState('')
@@ -34,9 +34,13 @@ export default function Dashboard() {
   const saveTimerRef = useRef(null)
   const chatStageRef = useRef(null)
   const messagesEndRef = useRef(null)
+  const savedChatsRef = useRef([])
 
   const activeChat = chats.find((c) => c.id === activeId) || chats[0]
   const messageCount = activeChat?.messages?.length || 0
+  const savedChats = chats.filter((c) => c.messages.length > 0)
+  savedChatsRef.current = savedChats
+  const isNewChatDisabled = savedChats.length === 0
 
   const scrollChatToBottom = (behavior = 'smooth') => {
     const stage = chatStageRef.current
@@ -137,13 +141,15 @@ export default function Dashboard() {
 
   const closeMenu = () => setMenuOpen(false)
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     closeMenu()
-    logout()
+    await logout()
     navigate('/login', { replace: true })
   }
 
   const handleNewChat = () => {
+    if (savedChatsRef.current.length === 0) return
+
     const chat = createChat()
     setChats((prev) => [chat, ...prev])
     setActiveId(chat.id)
@@ -245,6 +251,7 @@ export default function Dashboard() {
 
       const res = await fetch(`${API_BASE}/chat`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: text, history }),
         signal: AbortSignal.timeout(45000),
@@ -291,8 +298,6 @@ export default function Dashboard() {
     }
   }
 
-  const recentChats = chats.filter((c) => c.messages.length > 0)
-
   if (!ready) {
     return (
       <div className="dash">
@@ -331,7 +336,13 @@ export default function Dashboard() {
           </button>
         </div>
 
-        <button type="button" className="new-chat-btn" onClick={handleNewChat}>
+        <button
+          type="button"
+          className="new-chat-btn"
+          onClick={handleNewChat}
+          disabled={isNewChatDisabled}
+          aria-disabled={isNewChatDisabled}
+        >
           <span className="new-chat-icon" aria-hidden="true">
             <SquarePen size={16} strokeWidth={2} />
           </span>
@@ -340,11 +351,11 @@ export default function Dashboard() {
 
         <div className="recent-section">
           <h2>Recent Chats</h2>
-          {recentChats.length === 0 ? (
+          {savedChats.length === 0 ? (
             <p className="recent-empty">No chats yet</p>
           ) : (
             <ul className="recent-list">
-              {recentChats.map((chat) => {
+              {savedChats.map((chat) => {
                 const isActive = chat.id === activeId
                 const isRenaming = renamingId === chat.id
 
@@ -432,6 +443,8 @@ export default function Dashboard() {
             type="button"
             className="mobile-new-chat"
             onClick={handleNewChat}
+            disabled={isNewChatDisabled}
+            aria-disabled={isNewChatDisabled}
             aria-label="New chat"
           >
             <SquarePen size={18} strokeWidth={2} />

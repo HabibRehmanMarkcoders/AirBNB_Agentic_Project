@@ -290,9 +290,14 @@ a:hover {
   transition: border-color 0.2s, background 0.2s;
 }
 
-.new-chat-btn:hover {
+.new-chat-btn:hover:not(:disabled) {
   border-color: var(--rausch);
   background: #fff5f7;
+}
+
+.new-chat-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .new-chat-icon {
@@ -751,10 +756,15 @@ a:hover {
   }
 
   .menu-toggle-btn:hover,
-  .mobile-new-chat:hover {
+  .mobile-new-chat:hover:not(:disabled) {
     border-color: var(--rausch);
     color: var(--rausch);
     background: #fff5f7;
+  }
+
+  .mobile-new-chat:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
 
   .mobile-topbar-brand {

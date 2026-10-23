@@ -1,86 +1,36 @@
 # Agentic AirBNB Backend
 
-Express API with JWT authentication.
+Simple Express API with cookie JWT auth.
 
-## Folder structure
+## Structure
 
 ```
-backend/
-├── public/
-├── src/
-│   ├── config/
-│   ├── controllers/
-│   ├── services/
-│   ├── models/
-│   ├── routes/
-│   ├── middlewares/
-│   ├── utils/
-│   ├── constants/
-│   └── index.js
-├── tests/
-├── .env
-├── .gitignore
-├── package.json
-└── README.md
+src/
+├── middleware/     # Auth, Zod validate, errors
+├── routes/         # URL paths
+├── controllers/    # Request handlers + chat logic
+├── models/         # Mongoose schemas
+├── db/             # db.js Mongo connect
+└── app.js          # Entry point
 ```
 
-## Setup
-
-1. Install dependencies:
+## Run
 
 ```bash
 cd backend
 npm install
-```
-
-2. Configure `.env`:
-
-```env
-PORT=5000
-JWT_SECRET=your_secret_here
-JWT_EXPIRES_IN=7d
-CORS_ORIGIN=http://localhost:5173
-MONGO_URI=mongodb+srv://<user>:<password>@<cluster>/<db>
-```
-
-3. Start the server:
-
-```bash
 npm run dev
 ```
 
-## Auth endpoints
+Needs `.env` with `PORT`, `MONGO_URI`, `JWT_SECRET`, `API_KEY`, `AI_MODEL`, `CORS_ORIGIN`.
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| POST | `/api/auth/signup` | No | Create account in MongoDB + JWT |
-| POST | `/api/auth/login` | No | Login, returns JWT |
-| GET | `/api/auth/me` | Bearer token | Current user |
-| GET | `/api/health` | No | Health check |
+## MCP (listing tools)
 
-### Signup body
+Chat uses a custom MCP server (`scripts/listings-mcp-server.js`):
 
-```json
-{
-  "username": "alex",
-  "email": "alex@example.com",
-  "password": "secret123"
-}
-```
+1. Backend MCP client discovers tools (`listTools`)
+2. Tool definitions are passed to Gemini
+3. Gemini chooses which tool to call
+4. Backend executes via MCP `callTool` → MongoDB / cost math
 
-### Login body
-
-```json
-{
-  "email": "alex@example.com",
-  "password": "secret123"
-}
-```
-
-### Protected request header
-
-```
-Authorization: Bearer <token>
-```
-
-User schema: `backend/src/models/userModel.js` (`username`, `email`, `password`).
+Smoke test: `npm run test:mcp`

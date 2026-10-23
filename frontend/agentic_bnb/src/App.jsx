@@ -5,10 +5,16 @@ import Login from './pages/Login'
 import Signup from './pages/Signup'
 
 function ProtectedRoute({ children }) {
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
+
+  if (loading) {
+    return <div className="auth-page">Checking session…</div>
+  }
+
   if (!user) {
     return <Navigate to="/login" replace />
   }
+
   return children
 }
 
