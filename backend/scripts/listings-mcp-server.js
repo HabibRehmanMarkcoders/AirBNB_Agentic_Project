@@ -12,6 +12,10 @@ import {
   getListingById,
   calculateStayCost,
 } from '../src/controllers/listingService.js'
+import {
+  checkStayAvailability,
+  holdStayNights,
+} from '../src/controllers/stayService.js'
 
 function ok(data) {
   return {
@@ -111,6 +115,54 @@ server.registerTool(
       return ok(calculateStayCost(args || {}))
     } catch (err) {
       return fail(err.message || 'calculate_stay_cost failed')
+    }
+  },
+)
+
+server.registerTool(
+  'check_stay_availability',
+  {
+    description:
+      'Check whether a listing is free for a date range. Returns which nights are available or blocked (booked/held). Use before telling the user dates are free, and before holding.',
+    inputSchema: {
+      listing_id: z.string().describe('Listing ID to check'),
+      check_in: z.string().describe('Check-in date YYYY-MM-DD'),
+      check_out: z
+        .string()
+        .describe('Check-out date YYYY-MM-DD (exclusive; last night is the day before)'),
+    },
+  },
+  async (args) => {
+    try {
+      return ok(await checkStayAvailability(args || {}))
+    } catch (err) {
+      return fail(err.message || 'check_stay_availability failed')
+    }
+  },
+)
+
+server.registerTool(
+  'hold_stay_nights',
+  {
+    description:
+      'Soft-hold nights on a listing for 15 minutes so another guest cannot take them. Only call after the user clearly asks to reserve/hold, and after check_stay_availability shows available. Requires authenticated user.',
+    inputSchema: {
+      listing_id: z.string().describe('Listing ID to hold'),
+      check_in: z.string().describe('Check-in date YYYY-MM-DD'),
+      check_out: z
+        .string()
+        .describe('Check-out date YYYY-MM-DD (exclusive)'),
+      userId: z
+        .string()
+        .optional()
+        .describe('Authenticated user id (injected by backend; do not invent)'),
+    },
+  },
+  async (args) => {
+    try {
+      return ok(await holdStayNights(args || {}))
+    } catch (err) {
+      return fail(err.message || 'hold_stay_nights failed')
     }
   },
 )

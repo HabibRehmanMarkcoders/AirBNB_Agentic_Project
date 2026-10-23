@@ -3,7 +3,9 @@ import { generateReply } from './chatService.js'
 export const sendMessage = async (req, res) => {
   try {
     const { message, history = [] } = req.body
-    const result = await generateReply(message, history)
+    const result = await generateReply(message, history, {
+      userId: req.user?.id,
+    })
 
     res.status(200).json({
       success: true,

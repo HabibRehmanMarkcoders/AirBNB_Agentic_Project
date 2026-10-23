@@ -18,6 +18,10 @@ const stayNightSchema = new mongoose.Schema(
     bookingId: {
       type: mongoose.Schema.Types.ObjectId,
     },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
     state: {
       type: String,
       enum: ['held', 'booked'],

@@ -30,6 +30,8 @@ TOOL USAGE RULES:
 - Use search_listings to find listings that match the user's criteria.
 - Use get_listing_details to fetch full details for a specific listing ID.
 - Use calculate_stay_cost for ALL cost/price calculations — never do money arithmetic yourself.
+- Use check_stay_availability to learn from the database whether requested nights are free, booked, or held. Never invent availability.
+- Use hold_stay_nights only after the user clearly asks to reserve/hold those dates, and only after check_stay_availability shows available. Tell the user the hold lasts 15 minutes.
 - If a tool returns an error, inform the user clearly.
 
 OUT OF SCOPE (do NOT answer the substance — refuse politely):
@@ -213,9 +215,19 @@ async function callGeminiRaw({
 // Tool executor
 // ---------------------------------------------------------------------------
 
-async function executeTool(name, args) {
+async function executeTool(name, args, context = {}) {
+  const toolArgs = { ...(args || {}) }
+
+  // Never trust the model for ownership — inject authenticated user.
+  if (name === 'hold_stay_nights') {
+    if (!context.userId) {
+      return { error: 'Authentication required to hold nights.' }
+    }
+    toolArgs.userId = context.userId
+  }
+
   try {
-    return await callMcpTool(name, args || {})
+    return await callMcpTool(name, toolArgs)
   } catch (err) {
     return { error: err.message || `MCP tool "${name}" failed` }
   }
@@ -241,6 +253,7 @@ async function callGemini({
   temperature = 0.6,
   thinkingLevel = 'low',
   tools = null,
+  userId = null,
 }) {
   const contents = buildGeminiContents(message, history)
 
@@ -327,7 +340,7 @@ async function callGemini({
     const responseParts = []
     for (const part of functionCalls) {
       const { name, args } = part.functionCall
-      const result = await executeTool(name, args || {})
+      const result = await executeTool(name, args || {}, { userId })
       responseParts.push({
         functionResponse: {
           name,
@@ -400,8 +413,9 @@ export async function generateChatTitle(message) {
 // Public API
 // ---------------------------------------------------------------------------
 
-export async function generateReply(message, history = []) {
+export async function generateReply(message, history = [], context = {}) {
   const text = typeof message === 'string' ? message.trim() : ''
+  const userId = context.userId || null
 
   if (!text) {
     throw httpError('Message is required' , 400)
@@ -434,6 +448,7 @@ export async function generateReply(message, history = []) {
         message: text,
         history: historyArr,
         tools,
+        userId,
       }),
       generateChatTitle(text),
     ])
@@ -444,6 +459,7 @@ export async function generateReply(message, history = []) {
     message: text,
     history: historyArr,
     tools,
+    userId,
   })
   return { reply }
 }
